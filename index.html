@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Folha de Ponto</title>
+  <style>
+    :root {
+      --header-bg: #E48D65;
+      --sec1-bg: #DCE6F1;
+      --sec2-bg: #B8CCE4;
+      --total-bg: #FCD5B4;
+      --adiantamento-bg: #FFF2CC;
+      --red-alert: #C00000;
+      --border-color: #595959;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-color: #F2F2F2;
+      padding: 15px;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: white;
+      padding: 15px;
+      border: 1px solid #CCC;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      background: #EFEFEF;
+      padding: 10px;
+      border-radius: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .controls label {
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .controls input {
+      padding: 5px;
+      border: 1px solid #777;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .controls button {
+      padding: 6px 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid #595959;
+      background: #E48D65;
+      font-weight: bold;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 3px 4px;
+      height: 24px;
+    }
+
+    .th-main {
+      background-color: var(--header-bg);
+      font-weight: bold;
+      color: #000;
+    }
+
+    .th-sub {
+      background-color: var(--header-bg);
+      font-size: 10px;
+    }
+
+    .bg-sec1 { background-color: var(--sec1-bg); }
+    .bg-sec2 { background-color: var(--sec2-bg); }
+    .bg-total { background-color: var(--total-bg); }
+    .bg-adiantamento { background-color: var(--adiantamento-bg); }
+
+    input[type="time"] {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    input[type="number"], .editable-text {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 11px;
+    }
+
+    .editable-text {
+      text-align: left;
+      padding-left: 5px;
+      font-weight: bold;
+    }
+
+    input:focus {
+      outline: 1px solid #000;
+      background-color: #FFF !important;
+    }
+
+    .summary-table {
+      margin-top: 15px;
+      width: 260px;
+      margin-left: auto;
+    }
+
+    .summary-table td {
+      font-weight: bold;
+    }
+
+    .red-box {
+      background-color: var(--red-alert);
+      color: white;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    @media print {
+      .controls { display: none; }
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; border: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Painel de Controlo de Datas e Valores -->
+  <div class="controls">
+    <label>Início: <input type="date" id="startDate" value="2026-10-21"></label>
+    <label>Fim: <input type="date" id="endDate" value="2026-11-05"></label>
+    <button onclick="generateTable()">📅 Aplicar Datas</button>
+    <label>R$/Hora: <input type="number" id="hourlyRate" value="15.00" step="0.50" style="width: 70px;" onchange="calculateTotals()"></label>
+    <button onclick="window.print()" style="background: #fff;">🖨️ PDF / Imprimir</button>
+  </div>
+
+  <!-- Tabela Principal -->
+  <table id="sheetTable">
+    <thead>
+      <tr>
+        <th colspan="7" style="text-align: left; padding: 4px;">
+          Nome: <input type="text" id="employeeName" class="editable-text" value="Alan" style="display: inline-block; width: 150px;">
+        </th>
+        <th colspan="4" style="text-align: left; padding: 4px;">
+          Nº: <input type="text" class="editable-text" value="" style="display: inline-block; width: 80px;">
+        </th>
+      </tr>
+      <tr>
+        <th colspan="11" style="text-align: left; font-size: 14px; padding-left: 10px;">
+          Folha de Ponto | <span id="monthTitle">outubro / novembro 2026</span>
+        </th>
+      </tr>
+      <tr>
+        <th rowspan="2" class="th-main" style="width: 75px;">Data</th>
+        <th rowspan="2" class="th-main" style="width: 40px;">DIAS</th>
+        <th colspan="2" class="th-main">Período 01</th>
+        <th colspan="2" class="th-main">Período 2</th>
+        <th rowspan="2" class="th-main bg-total" style="width: 55px;">total</th>
+        <th rowspan="2" class="th-main bg-total" style="width: 55px;" id="grandTotalHeader">00:00</th>
+        <th rowspan="2" class="th-main" style="width: 75px;">Data</th>
+        <th rowspan="2" class="th-main" style="width: 40px;">Dia</th>
+        <th rowspan="2" class="th-main bg-adiantamento" style="width: 90px;">Adiantamento</th>
+      </tr>
+      <tr>
+        <th class="th-sub">Entrada</th>
+        <th class="th-sub">Saída</th>
+        <th class="th-sub">Entrada</th>
+        <th class="th-sub">Saída</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <!-- Linhas geradas dinamicamente -->
+    </tbody>
+  </table>
+
+  <!-- Tabela de Resumo / Pagamento -->
+  <table class="summary-table">
+    <tr>
+      <td style="text-align: left;">Total Hora:</td>
+      <td id="summaryTotalHours">0:00</td>
+    </tr>
+    <tr>
+      <td style="text-align: left;">Pagamento Total bruto:</td>
+      <td id="summaryGrossPay">R$ 0,00</td>
+    </tr>
+    <tr>
+      <td style="text-align: left;">Total adiantamentos:</td>
+      <td id="summaryAdvance">R$ 0,00</td>
+    </tr>
+    <tr class="bg-adiantamento">
+      <td style="text-align: left;">Total líquido:</td>
+      <td id="summaryNetPay">R$ 0,00</td>
+    </tr>
+  </table>
+</div>
+
+<script>
+  const weekDays = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+  function generateTable() {
+    const startInput = document.getElementById('startDate').value;
+    const endInput = document.getElementById('endDate').value;
+    
+    if (!startInput || !endInput) {
+      alert('Por favor, selecione a data inicial e final.');
+      return;
+    }
+
+    let startDate = new Date(startInput + 'T00:00:00');
+    let endDate = new Date(endInput + 'T00:00:00');
+
+    if (startDate > endDate) {
+      alert('A data inicial não pode ser maior que a data final.');
+      return;
+    }
+
+    // Atualiza o título do mês com base nas datas selecionadas
+    const startMonth = startDate.toLocaleString('pt-BR', { month: 'long' });
+    const endMonth = endDate.toLocaleString('pt-BR', { month: 'long' });
+    const startYear = startDate.getFullYear();
+    const endYear = endDate.getFullYear();
+
+    if (startMonth === endMonth) {
+      document.getElementById('monthTitle').innerText = `${startMonth} ${startYear}`;
+    } else {
+      document.getElementById('monthTitle').innerText = `${startMonth} / ${endMonth} ${startYear}`;
+    }
+
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dayOfWeek = weekDays[currentDate.getDay()];
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const year = currentDate.getFullYear();
+      const dateFormatted = `${day}/${month}/${year}`;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${dateFormatted}</td>
+        <td>${dayOfWeek}</td>
+        <td class="bg-sec1"><input type="time" class="p1-in" onchange="calculateTotals()"></td>
+        <td class="bg-sec1"><input type="time" class="p1-out" onchange="calculateTotals()"></td>
+        <td class="bg-sec2"><input type="time" class="p2-in" onchange="calculateTotals()"></td>
+        <td class="bg-sec2"><input type="time" class="p2-out" onchange="calculateTotals()"></td>
+        <td class="bg-total day-total">00:00</td>
+        <td class="bg-total">00:00</td>
+        <td>${dateFormatted}</td>
+        <td>${dayOfWeek}</td>
+        <td class="bg-adiantamento"><input type="number" class="advance-input" step="0.01" min="0" placeholder="0,00" onchange="calculateTotals()"></td>
+      `;
+      tbody.appendChild(row);
+
+      // Avança para o próximo dia
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Bloco final de adiantamento
+    const totalRow = document.createElement('tr');
+    totalRow.innerHTML = `
+      <td colspan="10"></td>
+      <td class="red-box">Total adiantamento</td>
+    `;
+    tbody.appendChild(totalRow);
+
+    calculateTotals();
+  }
+
+  function parseTime(timeStr) {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  function calculateTotals() {
+    const rows = document.querySelectorAll('#tableBody tr');
+    let grandTotalMinutes = 0;
+    let totalAdvance = 0;
+
+    rows.forEach(row => {
+      const p1In = parseTime(row.querySelector('.p1-in')?.value);
+      const p1Out = parseTime(row.querySelector('.p1-out')?.value);
+      const p2In = parseTime(row.querySelector('.p2-in')?.value);
+      const p2Out = parseTime(row.querySelector('.p2-out')?.value);
+      
+      let dayMinutes = 0;
+      if (p1In !== null && p1Out !== null && p1Out > p1In) dayMinutes += (p1Out - p1In);
+      if (p2In !== null && p2Out !== null && p2Out > p2In) dayMinutes += (p2Out - p2In);
+
+      const dayTotalCell = row.querySelector('.day-total');
+      if (dayTotalCell) {
+        const hours = Math.floor(dayMinutes / 60);
+        const mins = dayMinutes % 60;
+        dayTotalCell.innerText = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+      }
+
+      grandTotalMinutes += dayMinutes;
+
+      const advanceInput = row.querySelector('.advance-input');
+      if (advanceInput && advanceInput.value) {
+        totalAdvance += parseFloat(advanceInput.value) || 0;
+      }
+    });
+
+    const totalHours = Math.floor(grandTotalMinutes / 60);
+    const totalMins = grandTotalMinutes % 60;
+    const timeFormatted = `${String(totalHours).padStart(2, '0')}:${String(totalMins).padStart(2, '0')}`;
+
+    document.getElementById('grandTotalHeader').innerText = timeFormatted;
+    document.getElementById('summaryTotalHours').innerText = `${totalHours}:${String(totalMins).padStart(2, '0')}`;
+
+    const hourlyRate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+    const grossPay = (grandTotalMinutes / 60) * hourlyRate;
+    const netPay = grossPay - totalAdvance;
+
+    document.getElementById('summaryGrossPay').innerText = `R$ ${grossPay.toFixed(2).replace('.', ',')}`;
+    document.getElementById('summaryAdvance').innerText = `R$ ${totalAdvance.toFixed(2).replace('.', ',')}`;
+    document.getElementById('summaryNetPay').innerText = `R$ ${netPay.toFixed(2).replace('.', ',')}`;
+  }
+
+  // Inicializar a tabela ao carregar a página
+  window.onload = generateTable;
+</script>
+
+</body>
+</html>
